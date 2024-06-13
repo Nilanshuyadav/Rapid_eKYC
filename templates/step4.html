@@ -29,7 +29,7 @@
             height: 5px;
             background-color: #007bff;
             border-radius: 3px;
-            width: 60%;
+            width: 30%;
             margin-bottom: 15px;
         }
 
@@ -81,6 +81,15 @@
             padding: 10px 15px;
         }
 
+        .rotate-image-overlay {
+            position: absolute;
+            top: 50%;
+            right: 15px;
+            transform: translateY(-50%);
+            cursor: pointer;
+            z-index: 2;
+        }
+
         .refresh-container {
             position: absolute;
             top: 70%;
@@ -99,6 +108,11 @@
             color: black;
         }
 
+        .rotate-image-overlay.hide {
+            display: none;
+        }
+
+        /* Adjustments for the video element */
         #videoPreview {
             position: absolute;
             top: 0;
@@ -106,6 +120,17 @@
             width: 79%;
             height: 100%;
             object-fit: cover;
+        }
+
+        .instructions {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 15px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
         }
 
         .buttons {
@@ -139,10 +164,15 @@
             cursor: pointer;
         }
 
+        .file-btn,
         .capture-btn,
         #captureImageButton {
             background-color: #28a745;
             width: 100%;
+        }
+
+        .hidden-input {
+            display: none;
         }
 
         /* Modal styles */
@@ -199,6 +229,12 @@
             cursor: pointer;
         }
 
+        #rotateOverlay {
+            width: 50px;
+            height: 50px;
+            margin-left: 20px;
+        }
+
         #captureImageButton {
             margin-top: 10px;
             width: 100%;
@@ -225,16 +261,6 @@
             align-self: flex-end;
             margin-left: auto;
         }
-
-        #countdown {
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 2em;
-            color: red;
-            z-index: 3;
-        }
     </style>
 </head>
 
@@ -248,7 +274,6 @@
             <div class="image-container">
                 <img id="idPreview" src="/static/assets/img/uploadPhoto.jpg" alt="ID Card Preview">
                 <video id="videoPreview" autoplay muted></video>
-                <div id="countdown"></div>
             </div>
             <button id="captureImageButton" class="capture-btn">Capture Image</button>
             <div class="refresh-container">
@@ -314,131 +339,96 @@
             }
         }
 
-        var idPreview = document.getElementById('idPreview');
-        var video = document.getElementById('videoPreview');
-        var countdown = document.getElementById('countdown');
-        var capturedImage = null; // Variable to hold captured image data
-        var stream = null; // Variable to hold the media stream
-        var photoIndex = 0; // Variable to track photo sequence
-
-        // Capture photo functionality
-        var enableCameraButton = document.getElementById('enableCameraButton');
-        var captureImageButton = document.getElementById('captureImageButton');
-        var canvas = document.createElement('canvas');
-        var context = canvas.getContext('2d');
-
-        const photoPositions = ['Front', 'Left Profile', 'Right Profile', 'Look Up', 'Look Down'];
-
-        enableCameraButton.addEventListener('click', async () => {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                video.srcObject = stream;
-                enableCameraButton.style.display = 'none';
-                video.style.display = 'block';
-                captureImageButton.style.display = 'inline-block';
-                localStorage.setItem('cameraEnabled', 'true'); // Save camera state
-                startLivenessDetection(); // Start the liveness detection sequence
-            } catch (err) {
-                console.error('Error accessing the camera: ', err);
-            }
+        // Submit report form
+        document.getElementById('reportForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+            // Handle form submission here
+            console.log('Form submitted!');
+            modal.style.display = "none";
         });
 
-        function startLivenessDetection() {
-            countdownTimer(3, () => {
-                captureImage();
-                photoIndex++;
-                if (photoIndex < photoPositions.length) {
-                    setTimeout(startLivenessDetection, 1000); // Pause between captures
-                } else {
-                    finishLivenessDetection();
-                }
-            });
+        // Enable camera button
+        document.getElementById('enableCameraButton').addEventListener('click', function () {
+            enableCamera();
+        });
+
+        // Variables
+        var video = document.getElementById('videoPreview');
+        var captureButton = document.getElementById('captureImageButton');
+        var enableCameraButton = document.getElementById('enableCameraButton');
+        var nextButton = document.getElementById('nextButton');
+        var idPreview = document.getElementById('idPreview');
+        var refreshButton = document.getElementById('refreshImage');
+
+        // Function to enable the camera
+        function enableCamera() {
+            enableCameraButton.style.display = 'none';
+            captureButton.style.display = 'block';
+            nextButton.style.display = 'none';
+            idPreview.style.display = 'none';
+            video.style.display = 'block';
+
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function (stream) {
+                    video.srcObject = stream;
+                    video.play();
+                })
+                .catch(function (error) {
+                    console.error('Error accessing camera: ', error);
+                    alert('Error accessing camera: ' + error.message);
+                });
         }
 
-        function countdownTimer(seconds, callback) {
-            countdown.style.display = 'block';
-            countdown.innerHTML = seconds;
-            var interval = setInterval(() => {
-                seconds--;
-                countdown.innerHTML = seconds;
-                if (seconds <= 0) {
-                    clearInterval(interval);
-                    countdown.style.display = 'none';
-                    callback();
-                }
-            }, 1000);
-        }
-
-        function captureImage() {
+        // Function to capture the image
+        captureButton.addEventListener('click', function () {
+            var canvas = document.createElement('canvas');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
+            var context = canvas.getContext('2d');
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            context.strokeStyle = 'green';
-            context.lineWidth = 5;
-            context.strokeRect(50, 50, canvas.width - 100, canvas.height - 100); // Draw rectangle
-            context.font = "30px Arial";
-            context.fillStyle = "red";
-            context.fillText(photoPositions[photoIndex], 10, 50); // Draw text
-            capturedImage = canvas.toDataURL('image/jpeg');
-            idPreview.src = capturedImage;
-        }
-
-        function finishLivenessDetection() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop()); // Stop the camera stream
-            }
+            var imageDataUrl = canvas.toDataURL('image/png');
+            idPreview.src = imageDataUrl;
+            idPreview.style.display = 'block';
             video.style.display = 'none';
-            captureImageButton.style.display = 'none';
-            enableCameraButton.style.display = 'inline-block';
-            document.getElementById('nextButton').style.display = 'block';
-            localStorage.setItem('cameraEnabled', 'false'); // Clear camera state
-        }
+            captureButton.style.display = 'none';
+            nextButton.style.display = 'block';
 
-        // Refresh functionality
-        var refreshButton = document.getElementById('refreshImage');
-        refreshButton.addEventListener('click', () => {
-            idPreview.src = '/static/assets/img/uploadPhoto.jpg';
-            capturedImage = null;
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop()); // Stop the camera stream
-            }
-            video.style.display = 'none';
-            captureImageButton.style.display = 'none';
-            enableCameraButton.style.display = 'inline-block';
-            document.getElementById('nextButton').style.display = 'none';
-            localStorage.removeItem('cameraEnabled'); // Clear camera state
-            location.reload(); // Reload the page
+            // Stop the camera stream
+            stopCamera();
+
+            // Send the captured image to the server
+            var formData = new FormData();
+            formData.append('image_data', imageDataUrl);
+            $.ajax({
+                type: 'POST',
+                url: '/upload_face',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (response) {
+                    console.log('Image sent successfully!');
+                    // Handle success response if needed
+                },
+                error: function (error) {
+                    console.error('Error sending image:', error);
+                    // Handle error if needed
+                }
+            });
         });
 
-        // Form submission handling
-        $('#reportForm').on('submit', function (event) {
-            event.preventDefault();
-            // Implement form submission logic here (e.g., send data to server)
-            alert('Report submitted.'); // Placeholder alert
-            modal.style.display = "none"; // Close the modal after submission
-        });
 
-        // Automatically enable camera if it was previously enabled
-        $(document).ready(function () {
-            if (localStorage.getItem('cameraEnabled') === 'true') {
-                $('#enableCameraButton').click();
-            } else {
-                $("#captureImageButton").hide();
-                $("#refreshImage").hide();
-                $("#refreshText").hide();
+        // Function to stop the camera stream
+        function stopCamera() {
+            if (video.srcObject) {
+                let tracks = video.srcObject.getTracks();
+                tracks.forEach(track => track.stop());
+                video.srcObject = null;
             }
+        }
 
-            $("#enableCameraButton").click(function () {
-                $("#enableCameraButton").hide();
-                $("#captureImageButton").show();
-                $("#refreshImage").show();
-                $("#refreshText").show();
-            });
-            $("#captureImageButton").click(function () {
-                $("#nextButton").show();
-                $("#captureImageButton").hide();
-                $("#enableCameraButton").hide();
-            });
+        // Refresh the page when the refresh image is clicked
+        document.getElementById('refreshImage').addEventListener('click', function () {
+            location.reload();
         });
     </script>
 </body>
