@@ -378,8 +378,8 @@
             }
         }
 
-         // Function to redirect to step4.html
-         function redirectToStep4() {
+        // Function to redirect to step4.html
+        function redirectToStep4() {
             window.location.href = "/step4";
         }
 
@@ -546,26 +546,46 @@
                 $("#nextButton").show();
                 $("#captureImageButton").hide();
             });
-            $("#nextButton").click(function () {
-                if (capturedImage) {
-                    // Send the captured image to the server
-                    $.ajax({
-                        url: '/fetchData',
-                        method: 'POST',
-                        data: { capturedImage: capturedImage },
-                        success: function (response) {
-                            alert("Image saved successfully!");
-                            console.log("Captured Image:", capturedImage);   //just for checking image in console
-                            console.log("Server Response:", response);
-                        },
-                        error: function (err) {
-                            console.error("Error sending image:", err);
-                        }
-                    });
-                } else {
-                    alert("Please capture or select an image first!");
-                }
-            });
+            // $("#nextButton").click(function () {
+            //     if (capturedImage) {
+            //         // Send the captured image to the server
+            //         $.ajax({
+            //             url: '/fetchData',
+            //             method: 'POST',
+            //             data: { capturedImage: capturedImage },
+            //             success: function (response) {
+            //                 alert("Image saved successfully!");
+            //                 console.log("Captured Image:", capturedImage);   //just for checking image in console
+            //                 console.log("Server Response:", response);
+            //             },
+            //             error: function (err) {
+            //                 console.error("Error sending image:", err);
+            //             }
+            //         });
+            //     } else {
+            //         alert("Please capture or select an image first!");
+            //     }
+            // });
+        });
+        document.getElementById("nextButton").addEventListener("click", function () {
+            if (capturedImage) {
+                // Send the captured image to the server
+                $.ajax({
+                    url: '/upload_image',
+                    method: 'POST',
+                    data: { capturedImage: capturedImage },
+                    success: function (response) {
+                        alert("Image saved successfully!");
+                        console.log("Server Response:", response);
+                        redirectToStep4();
+                    },
+                    error: function (err) {
+                        console.error("Error sending image:", err);
+                    }
+                });
+            } else {
+                alert("Please capture or select an image first!");
+            }
         });
     </script>
 </body>

@@ -1,0 +1,84 @@
+import base64
+from io import BytesIO
+from PIL import Image
+import time
+from google import generativeai
+from google.ai.generativelanguage import Blob
+from google.generativeai.types import GenerationConfig, HarmCategory, HarmBlockThreshold, HarmProbability
+from google.generativeai.types.answer_types import FinishReason
+ 
+# Configure the API with your API key
+generativeai.configure(api_key="AIzaSyD4F-u7Vf2XoZ3m8RH1qmcDchSyHPlCboQ")
+ 
+# Define the model and safety settings
+gemini_model = generativeai.GenerativeModel("gemini-1.0-pro-vision-latest")
+safety_settings = {
+    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+}
+ 
+def add_base64_padding(base64_string):
+    """Add padding to a base64 string to make its length a multiple of 4."""
+    return base64_string + '=' * (-len(base64_string) % 4)
+ 
+def image_to_base64(image_path):
+    """Convert an image to a base64 string."""
+    with Image.open(image_path) as image:
+        buffered = BytesIO()
+        image.save(buffered, format=image.format)
+        img_byte = buffered.getvalue()
+        img_base64 = base64.b64encode(img_byte).decode('utf-8')
+    return img_base64
+ 
+def generate_content(query_text: str, files: list, temperature: float, max_output_tokens: int, top_p: float):
+    """Generate content using the generative AI model."""
+    start_time = time.time()
+    contents = [query_text]
+    images = [Image.open(BytesIO(base64.b64decode(add_base64_padding(image_file)))) for image_file in files]
+    contents.extend(images)
+ 
+    response = gemini_model.generate_content(
+        contents=contents,
+        safety_settings=safety_settings,
+        generation_config=GenerationConfig(
+            candidate_count=1,
+            max_output_tokens=max_output_tokens,
+            temperature=temperature,
+            top_p=top_p
+        )
+    )
+    response.resolve()
+ 
+    request_tokens = gemini_model.count_tokens(contents).total_tokens
+    print("Request tokens:", request_tokens)
+ 
+    try:
+        text_response = response.text
+        print("Text response:", text_response)
+    except ValueError as e:
+        print(f'Error: {e}')
+ 
+    finish_reason = response.candidates[0].finish_reason
+    error_reason = 'Response was blocked '
+ 
+    if finish_reason == FinishReason.MAX_TOKENS:
+        error_reason += 'due to the maximum number of tokens specified.'
+    elif finish_reason == FinishReason.SAFETY:
+        error_reason += 'due to safety reasons.'
+        flagged_categories = [rating.category for rating in response.candidates[0].safety_ratings if rating.probability != HarmProbability.NEGLIGIBLE]
+        error_reason += f' Flagged categories: {flagged_categories}.'
+    elif finish_reason == FinishReason.RECITATION:
+        error_reason += 'due to recitation.'
+    elif finish_reason == FinishReason.OTHER:
+        error_reason += 'due to unknown reasons.'
+ 
+    print("Finish reason:", finish_reason)
+    print("Error reason:", error_reason)
+ 
+if __name__ == "__main__":
+    query_text = "You are a document verification assistant. Here is a document of a user. Organize all details present in the image to an object."
+    files = [image_to_base64("./Mayank.png")]
+    temperature = 0.5
+    max_output_tokens = 1000
+    top_p = 0.5
+    generate_content(query_text, files, temperature, max_output_tokens, top_p)
