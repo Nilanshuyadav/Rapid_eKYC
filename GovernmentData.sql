@@ -111,6 +111,15 @@ select * from UserDetails
 --);
 
 
+CREATE TABLE Users (
+    UserID INT PRIMARY KEY IDENTITY(1,1),
+    FullName VARCHAR(100) NOT NULL,
+    Email VARCHAR(100) NOT NULL UNIQUE,
+    Password VARCHAR(100) NOT NULL
+);
+
+
+select * from Users
 
 
 

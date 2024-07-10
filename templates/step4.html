@@ -29,7 +29,7 @@
             height: 5px;
             background-color: #007bff;
             border-radius: 3px;
-            width: 30%;
+            width: 60%;
             margin-bottom: 15px;
         }
 
@@ -44,7 +44,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 30px;
             border: 1px solid #ccc;
             border-radius: 8px;
             background-color: #f9f9f9;
@@ -116,7 +116,7 @@
         #videoPreview {
             position: absolute;
             top: 0;
-            left: 67px;
+            left: 89px;
             width: 79%;
             height: 100%;
             object-fit: cover;
@@ -237,7 +237,7 @@
 
         #captureImageButton {
             margin-top: 10px;
-            width: 100%;
+            width: 35%;
         }
 
         .next-btn {
@@ -269,10 +269,10 @@
         <div class="progress-bar"></div>
         <h1>2/3</h1>
         <p>Estimated time to complete: 5 min.</p>
-        <h1>Upload Your ID Photo</h1>
+        <h1>Capture your Live Image</h1>
         <div class="id-card">
             <div class="image-container">
-                <img id="idPreview" src="/static/assets/img/uploadPhoto.jpg" alt="ID Card Preview">
+                <img id="idPreview" src="/static/assets/img/face.jpg" alt="ID Card Preview">
                 <video id="videoPreview" autoplay muted></video>
             </div>
             <button id="captureImageButton" class="capture-btn">Capture Image</button>
@@ -339,12 +339,30 @@
             }
         }
 
-        // Submit report form
-        document.getElementById('reportForm').addEventListener('submit', function (event) {
-            event.preventDefault();
-            // Handle form submission here
-            console.log('Form submitted!');
-            modal.style.display = "none";
+        // Handle form submission for reporting issues
+        $("#submitReportBtn").click(function (e) {
+            e.preventDefault();
+
+            let formData = {
+                username: $("#username").val(),
+                note: $("#note").val()
+            };
+
+            $.ajax({
+                url: '/report/addreport',
+                method: 'POST',
+                data: formData,
+                success: function (response) {
+                    alert(response.message);
+                    $(".modal .close").click();
+                    $("#note").val('');
+                    $("#username").val('');
+                },
+                error: function (err) {
+                    console.error("Error submitting report:", err);
+                    alert("Error submitting report. Please try again.");
+                }
+            });
         });
 
         // Enable camera button
@@ -396,9 +414,15 @@
             // Stop the camera stream
             stopCamera();
 
+            // Store the captured image data URL in a global variable
+            window.capturedImageDataUrl = imageDataUrl;
+        });
+
+        // Function to handle the "Next" button click
+        nextButton.addEventListener('click', function () {
             // Send the captured image to the server
             var formData = new FormData();
-            formData.append('image_data', imageDataUrl);
+            formData.append('image_data', window.capturedImageDataUrl);
             $.ajax({
                 type: 'POST',
                 url: '/upload_face',
@@ -408,14 +432,17 @@
                 success: function (response) {
                     console.log('Image sent successfully!');
                     // Handle success response if needed
+                    // Redirect to the final.html page
+                    window.location.href = '/final';
                 },
                 error: function (error) {
                     console.error('Error sending image:', error);
                     // Handle error if needed
                 }
             });
-        });
 
+            // Redirect to the next page or perform other actions
+        });
 
         // Function to stop the camera stream
         function stopCamera() {
@@ -429,6 +456,24 @@
         // Refresh the page when the refresh image is clicked
         document.getElementById('refreshImage').addEventListener('click', function () {
             location.reload();
+        });
+
+        // Show/hide buttons based on user interaction
+        $(document).ready(function () {
+            $("#captureImageButton").hide();
+            $("#nextButton").hide();
+            $("#refreshImage").hide();
+            $("#refreshText").hide();
+            $("#enableCameraButton").click(function () {
+                $("#enableCameraButton").hide();
+                $("#captureImageButton").show();
+                $("#refreshImage").show();
+                $("#refreshText").show();
+            });
+            $("#captureImageButton").click(function () {
+                $("#nextButton").show();
+                $("#captureImageButton").hide();
+            });
         });
     </script>
 </body>
