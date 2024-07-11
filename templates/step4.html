@@ -430,9 +430,11 @@
                 contentType: false,
                 processData: false,
                 success: function (response) {
-                    console.log('Image sent successfully!');
-                    // Handle success response if needed
-                    // Redirect to the final.html page
+                    if(response == "1")
+                        alert("Process completed successfully!");
+                    else
+                        alert("The image or Docs is inappropriate!");
+
                     window.location.href = '/final';
                 },
                 error: function (error) {
