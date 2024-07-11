@@ -9,6 +9,7 @@ import ftfy
 import pyodbc
 import json
 import time
+import faceRecognisation as fr
 from google import generativeai
 from google.generativeai.types import GenerationConfig, HarmCategory, HarmBlockThreshold, HarmProbability
 from google.generativeai.types.answer_types import FinishReason
@@ -102,8 +103,8 @@ def parse_response(response_text):
     return extracted_info
 
 def insert_to_database(info, image_data):
-    server = 'INVL0077'
-    database = 'RapidKyc'
+    server = 'INVL0089'
+    database = 'eKYC'
     connection_string = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};Trusted_Connection=yes;"
 
     conn = pyodbc.connect(connection_string)
@@ -118,8 +119,23 @@ def insert_to_database(info, image_data):
     cursor.close()
     conn.close()
 
-def compareFace(face1, face2):
-    return 1
+
+def compareFace(image_a, image_b):
+    image2 = convert_to_byte(image_b)
+    image1 = convert_to_byte(image_a)
+
+    result = fr.verifyFace(image1, image2)
+    return result
+
+
+def convert_to_byte(data_url):
+    header, encoded = data_url.split(",", 1)
+    image_data = base64.b64decode(encoded)
+    image = Image.open(BytesIO(image_data))
+    image1 = image.convert('RGB')
+    image_np = np.array(image1)
+    return image_np
+
 
 def addReport(cursor, conn, username, note):
     try:
