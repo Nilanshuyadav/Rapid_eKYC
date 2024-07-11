@@ -19,14 +19,14 @@ CORS(app)  # Enable CORS for all origins
 def get_db_connection():
     conn = pyodbc.connect(
         'DRIVER={ODBC Driver 17 for SQL Server};'
-        'SERVER=INVL0077;'
-        'DATABASE=RapidKyc;'
+        'SERVER=INVL0089;'
+        'DATABASE=eKYC;'
         'Trusted_Connection=yes;'
     )
     return conn
 
 # Configure GenerativeAI
-generativeai.configure(api_key="AIzaSyD4F-u7Vf2XoZ3m8RH1qmcDchSyHPlCboQ")
+generativeai.configure(api_key="AIzaSyC9I3wsmn6PIPkfOpphI_-ipcAWEpzfGA4")
 gemini_model = generativeai.GenerativeModel("gemini-1.0-pro-vision-latest")
 
 safety_settings = {
@@ -169,7 +169,7 @@ def upload_image():
 
         data = db.generate_content(query_text, files, temperature, max_output_tokens, top_p)
         
-        if data:
+        if data['aadhaar_number']:
             db.insert_to_database(data, image_data)
             return jsonify({"message": "Image processed and saved successfully", "data": data}), 200
         else:
@@ -184,7 +184,7 @@ def upload_image():
 def upload_face():
     try:
         # Extract image data from request
-        image_data = base64.b64decode(request.form['image_data'].split(",")[1])
+        image2 = request.form['image_data']
 
         # Connect to the database
         conn = get_db_connection()
@@ -198,21 +198,43 @@ def upload_face():
 
         query = '''
             UPDATE UserUpload
-            SET UploadedImage = ?
+            SET UploadedImg = ?
             WHERE UploadTime = (SELECT TOP 1 UploadTime FROM UserUpload ORDER BY UploadTime DESC)
         '''
+        # base64.b64decode(request.form['image_data'].split(",")[1])
 
-        cursor.execute(query, (image_data,))
-        conn.commit()
+        base64Image = base64.b64decode(image2.split(",")[1])
+        #cursor.execute(query, base64Image)
+
+        # query = "UPDATE userUpload SET UploadedImg = " + image2 + " WHERE UploadTime = (SELECT TOP 1 UploadTime FROM UserUpload ORDER BY UploadTime DESC)"
+        #
+        # cursor.execute(query)
+
+        cursor.execute("select top 1 AadhaarNumber from UserUpload order by UploadTime desc")
+        aadhaarNumberLatest = cursor.fetchall()[0][0]
+
+        aadhaarNumberLatest = aadhaarNumberLatest.replace(" ", "")
+
+        cursor.execute("select Photo from GovernmentData where AadharNo = ?", aadhaarNumberLatest)
+        image1 = cursor.fetchall()[0][0]
 
         # Close resources
         cursor.close()
         conn.close()
 
-        return jsonify({'message': 'Image uploaded successfully'}), 200
+        result = db.compareFace(image1, image2)
+
+        if result:
+            return "1"
+        else:
+            return "0"
+
+    # cursor.execute(query, (image_data,))
+    #     conn.commit()
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
